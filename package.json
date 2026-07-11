@@ -1,0 +1,30 @@
+{
+  "name": "tally-sync-agent",
+  "version": "1.1.0",
+  "description": "FlexLoud production Tally multi-company sync agent",
+  "main": "index.js",
+  "scripts": {
+    "dev": "ts-node-dev --respawn src/index.ts",
+    "dev:daily": "ts-node-dev --respawn src/daily-sync.runner.ts",
+    "build": "tsc",
+    "start": "npm run build && node dist/index.js",
+    "start:daily": "npm run build && node dist/index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.15.2",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "node-cron": "^4.2.1"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^25.8.0",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^6.0.3"
+  }
+}

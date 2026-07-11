@@ -1,0 +1,21 @@
+{
+  "groups": 35,
+  "ledgers": 765,
+  "stockItems": 437,
+  "costCenters": 13,
+  "sales": 9,
+  "purchases": 3,
+  "receivables": 279,
+  "payables": 258,
+  "invalidRegularCategories": 0,
+  "gstRates": [
+    18
+  ],
+  "voucher55CostCenter": 22964,
+  "voucher58CostCenter": 76280,
+  "voucher59Reference": "",
+  "salesNamedParties": 4,
+  "payableTypes": [
+    "payable"
+  ]
+}

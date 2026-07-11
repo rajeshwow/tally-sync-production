@@ -1,0 +1,8 @@
+node_modules/ 
+dist/ 
+build/ 
+.env 
+.env.local 
+*.log 
+.tally-sync-checkpoints.json
+.tally-sync-checkpoints.json.tmp
