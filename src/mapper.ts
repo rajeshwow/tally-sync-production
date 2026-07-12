@@ -162,7 +162,12 @@ function isLikelyOrderReference(value?: string | null) {
   const text = stripXml(String(value || "")).trim();
   if (!text) return false;
   if (/\b(?:SO|PO)[-\/ ]?\d+\b/i.test(text)) return true;
-  if (/^(?:CRM\s*)?(?:SALES|PURCHASE)\s*ORDER\s*[:#-]?\s*[A-Z0-9\/-]*\d+[A-Z0-9\/-]*$/i.test(text)) return true;
+  if (
+    /^(?:CRM\s*)?(?:SALES|PURCHASE)\s*ORDER\s*[:#-]?\s*[A-Z0-9\/-]*\d+[A-Z0-9\/-]*$/i.test(
+      text,
+    )
+  )
+    return true;
   return !/\s/.test(text) && /\d/.test(text) && /[-\/]/.test(text);
 }
 
@@ -176,9 +181,12 @@ function readVoucherReferenceNumber(block: string) {
   if (directReference) return extractCrmSalesOrderRef(directReference);
 
   const basicOrderRef = stripXml(readTag(block, "BASICORDERREF"));
-  if (isLikelyOrderReference(basicOrderRef)) return extractCrmSalesOrderRef(basicOrderRef);
+  if (isLikelyOrderReference(basicOrderRef))
+    return extractCrmSalesOrderRef(basicOrderRef);
 
-  const narrationRef = extractCrmSalesOrderRef(stripXml(readTag(block, "NARRATION")));
+  const narrationRef = extractCrmSalesOrderRef(
+    stripXml(readTag(block, "NARRATION")),
+  );
   return isLikelyOrderReference(narrationRef) ? narrationRef : "";
 }
 
@@ -248,7 +256,8 @@ function readGstRate(block: string) {
     if (rate <= 0) continue;
 
     if (head.includes("cgst")) cgst = Math.max(cgst, rate);
-    else if (head.includes("sgst") || head.includes("utgst")) sgst = Math.max(sgst, rate);
+    else if (head.includes("sgst") || head.includes("utgst"))
+      sgst = Math.max(sgst, rate);
     else if (head.includes("igst")) igst = Math.max(igst, rate);
     else if (head.includes("state cess")) stateCess = Math.max(stateCess, rate);
     else if (head.includes("cess")) cess = Math.max(cess, rate);
@@ -371,7 +380,8 @@ function readLedgerTypeCategory(block: string) {
 
   for (const tag of directTags) {
     const value = cleanLedgerCategoryValue(readTag(block, tag));
-    if (value && !/^(regular|unregistered|registered)$/i.test(value)) return value;
+    if (value && !/^(regular|unregistered|registered)$/i.test(value))
+      return value;
   }
 
   const udfMatches = [
@@ -384,7 +394,12 @@ function readLedgerTypeCategory(block: string) {
     const tag = match[1] || "";
     const value = cleanLedgerCategoryValue(match[2]);
     if (!value) continue;
-    if (/GST|VAT|TAX|DUTY|DEALER|REGISTRATION|VOUCHER|STOCK|PRICE|RATE|BILL/i.test(tag)) continue;
+    if (
+      /GST|VAT|TAX|DUTY|DEALER|REGISTRATION|VOUCHER|STOCK|PRICE|RATE|BILL/i.test(
+        tag,
+      )
+    )
+      continue;
     if (/^(regular|unregistered|registered)$/i.test(value)) continue;
     return value;
   }
@@ -417,7 +432,9 @@ export function enrichLedgersWithGroupHierarchy<T extends Record<string, any>>(
   ledgers: T[],
   groups: ParsedAccountGroup[],
 ): T[] {
-  const groupByName = new Map(groups.map((group) => [normalizeText(group.name), group]));
+  const groupByName = new Map(
+    groups.map((group) => [normalizeText(group.name), group]),
+  );
 
   return ledgers.map((ledger) => {
     const path: string[] = [];
@@ -438,11 +455,12 @@ export function enrichLedgersWithGroupHierarchy<T extends Record<string, any>>(
       : normalizedPath.includes("sundry creditors")
         ? "vendor"
         : null;
-    const partyRootGroup = partyType === "customer"
-      ? "Sundry Debtors"
-      : partyType === "vendor"
-        ? "Sundry Creditors"
-        : null;
+    const partyRootGroup =
+      partyType === "customer"
+        ? "Sundry Debtors"
+        : partyType === "vendor"
+          ? "Sundry Creditors"
+          : null;
 
     return {
       ...ledger,
@@ -1137,7 +1155,9 @@ function isNonPartyOutstandingLedger(ledgerName?: string | null) {
     "output igst",
   ]);
   if (blockedExactNames.has(name)) return true;
-  return /^(?:input|output)?\s*(?:cgst|sgst|igst)(?:\s*@?\s*\d+(?:\.\d+)?%?)?$/i.test(name);
+  return /^(?:input|output)?\s*(?:cgst|sgst|igst)(?:\s*@?\s*\d+(?:\.\d+)?%?)?$/i.test(
+    name,
+  );
 }
 
 function parseVoucherOutstandingRows(voucherBlock: string) {
@@ -1645,7 +1665,10 @@ export function parseOutstandings(
       );
   }
 
-  const officialBillRows = parseOfficialBillFixedOutstandingRows(source, explicitBillType);
+  const officialBillRows = parseOfficialBillFixedOutstandingRows(
+    source,
+    explicitBillType,
+  );
 
   if (officialBillRows.length) {
     return officialBillRows;
@@ -1869,18 +1892,38 @@ function isUsefulCostCenterName(value?: string | null) {
 }
 
 function parseVoucherCostCenters(voucherBlock: string) {
-  type Allocation = { guid: string | null; name: string; category: string | null; amount: number };
-  const partyLedgerName = stripXml(readTag(voucherBlock, "PARTYLEDGERNAME")) || stripXml(readTag(voucherBlock, "PARTYNAME"));
+  type Allocation = {
+    guid: string | null;
+    name: string;
+    category: string | null;
+    amount: number;
+  };
+  const partyLedgerName =
+    stripXml(readTag(voucherBlock, "PARTYLEDGERNAME")) ||
+    stripXml(readTag(voucherBlock, "PARTYNAME"));
 
   const parseScopeAllocations = (scope: string): Allocation[] => {
     const rows: Allocation[] = [];
     for (const categoryBlock of readBlocks(scope, "CATEGORYALLOCATIONS.LIST")) {
-      const category = stripXml(readTag(categoryBlock, "CATEGORY")) || stripXml(readTag(categoryBlock, "NAME")) || null;
-      for (const ccBlock of readBlocks(categoryBlock, "COSTCENTREALLOCATIONS.LIST")) {
-        const name = stripXml(readTag(ccBlock, "NAME")) || stripXml(readTag(ccBlock, "COSTCENTRENAME")) || stripXml(readTag(ccBlock, "COSTCENTERNAME"));
+      const category =
+        stripXml(readTag(categoryBlock, "CATEGORY")) ||
+        stripXml(readTag(categoryBlock, "NAME")) ||
+        null;
+      for (const ccBlock of readBlocks(
+        categoryBlock,
+        "COSTCENTREALLOCATIONS.LIST",
+      )) {
+        const name =
+          stripXml(readTag(ccBlock, "NAME")) ||
+          stripXml(readTag(ccBlock, "COSTCENTRENAME")) ||
+          stripXml(readTag(ccBlock, "COSTCENTERNAME"));
         if (!isUsefulCostCenterName(name)) continue;
         rows.push({
-          guid: stripXml(readTag(ccBlock, "GUID")) || stripXml(readTag(ccBlock, "COSTCENTREGUID")) || stripXml(readTag(ccBlock, "COSTCENTERGUID")) || null,
+          guid:
+            stripXml(readTag(ccBlock, "GUID")) ||
+            stripXml(readTag(ccBlock, "COSTCENTREGUID")) ||
+            stripXml(readTag(ccBlock, "COSTCENTERGUID")) ||
+            null,
           name,
           category,
           amount: toPositiveNumber(readTag(ccBlock, "AMOUNT")),
@@ -1891,7 +1934,9 @@ function parseVoucherCostCenters(voucherBlock: string) {
   };
 
   const allLedgerBlocks = readBlocks(voucherBlock, "ALLLEDGERENTRIES.LIST");
-  const ledgerBlocks = allLedgerBlocks.length ? allLedgerBlocks : readBlocks(voucherBlock, "LEDGERENTRIES.LIST");
+  const ledgerBlocks = allLedgerBlocks.length
+    ? allLedgerBlocks
+    : readBlocks(voucherBlock, "LEDGERENTRIES.LIST");
   const business: Allocation[] = [];
   const party: Allocation[] = [];
 
@@ -1899,14 +1944,17 @@ function parseVoucherCostCenters(voucherBlock: string) {
     const ledgerName = stripXml(readTag(ledgerBlock, "LEDGERNAME"));
     const rows = parseScopeAllocations(ledgerBlock);
     if (!rows.length) continue;
-    if (partyLedgerName && isSameName(ledgerName, partyLedgerName)) party.push(...rows);
+    if (partyLedgerName && isSameName(ledgerName, partyLedgerName))
+      party.push(...rows);
     else business.push(...rows);
   }
 
   let selected = business.length ? business : party;
   if (!selected.length) {
     const allInventory = readBlocks(voucherBlock, "ALLINVENTORYENTRIES.LIST");
-    const inventory = allInventory.length ? allInventory : readBlocks(voucherBlock, "INVENTORYENTRIES.LIST");
+    const inventory = allInventory.length
+      ? allInventory
+      : readBlocks(voucherBlock, "INVENTORYENTRIES.LIST");
     selected = inventory.flatMap(parseScopeAllocations);
   }
   if (!selected.length) selected = parseScopeAllocations(voucherBlock);
@@ -1932,13 +1980,19 @@ function parseVoucherCostCenters(voucherBlock: string) {
     else merged.set(key, { ...row });
   }
   const finalAllocations = Array.from(merged.values());
-  const primary = finalAllocations.find((row) => Number(row.amount || 0) > 0) || finalAllocations[0] || null;
+  const primary =
+    finalAllocations.find((row) => Number(row.amount || 0) > 0) ||
+    finalAllocations[0] ||
+    null;
 
   return {
     costCenterGuid: primary?.guid || null,
     costCenterName: primary?.name || null,
     costCategory: primary?.category || null,
-    costCenterAmount: finalAllocations.reduce((sum, row) => sum + Number(row.amount || 0), 0),
+    costCenterAmount: finalAllocations.reduce(
+      (sum, row) => sum + Number(row.amount || 0),
+      0,
+    ),
     costCenterAllocations: finalAllocations,
   };
 }
@@ -1969,7 +2023,8 @@ function isVoucherTypeAllowed(
   }
 
   if (options.trustSourceCollection) return true;
-  if (options.exactVoucherType) return normalizedVoucherType === normalizedExpectedType;
+  if (options.exactVoucherType)
+    return normalizedVoucherType === normalizedExpectedType;
   return normalizedVoucherType.includes(normalizedExpectedType);
 }
 
@@ -2022,11 +2077,42 @@ function parseVoucherOrders(
         stripXml(readTag(block, "LEDGERGUID")) ||
         null;
 
-      if (!guid && !masterId && !voucherNumber && !voucherDate && !partyLedgerName) {
+      if (
+        !guid &&
+        !masterId &&
+        !voucherNumber &&
+        !voucherDate &&
+        !partyLedgerName
+      ) {
         return null;
       }
 
       const items = parseVoucherItems(block);
+
+      const sourceInventoryBlocks = (() => {
+        const allInventoryBlocks =
+          block.match(
+            /<ALLINVENTORYENTRIES\.LIST\b[\s\S]*?<\/ALLINVENTORYENTRIES\.LIST>/gi,
+          ) || [];
+
+        if (allInventoryBlocks.length) return allInventoryBlocks;
+
+        return (
+          block.match(
+            /<INVENTORYENTRIES\.LIST\b[\s\S]*?<\/INVENTORYENTRIES\.LIST>/gi,
+          ) || []
+        );
+      })();
+
+      // Tally can emit an empty INVENTORYENTRIES.LIST node for accounting-only
+      // vouchers. Counting list tags caused false parser failures. Count only
+      // source entries that actually contain a non-empty STOCKITEMNAME.
+      const sourceInventoryEntryCount = sourceInventoryBlocks.filter(
+        (itemBlock) => Boolean(stripXml(readTag(itemBlock, "STOCKITEMNAME"))),
+      ).length;
+
+      const itemsParsedSuccessfully =
+        sourceInventoryEntryCount === items.length;
 
       const itemsTotal = items.reduce(
         (sum, item) => sum + Number(item.amount || 0),
@@ -2075,14 +2161,10 @@ function parseVoucherOrders(
         items,
         voucherNature: options.voucherNature || null,
         voucher_nature: options.voucherNature || null,
-        inventoryEntryCount:
-          (block.match(/<ALLINVENTORYENTRIES\.LIST\b/gi) || []).length ||
-          (block.match(/<INVENTORYENTRIES\.LIST\b/gi) || []).length,
-        inventory_entry_count:
-          (block.match(/<ALLINVENTORYENTRIES\.LIST\b/gi) || []).length ||
-          (block.match(/<INVENTORYENTRIES\.LIST\b/gi) || []).length,
-        itemsParsedSuccessfully: true,
-        items_parsed_successfully: true,
+        inventoryEntryCount: sourceInventoryEntryCount,
+        inventory_entry_count: sourceInventoryEntryCount,
+        itemsParsedSuccessfully,
+        items_parsed_successfully: itemsParsedSuccessfully,
 
         costCenterGuid: costCenterData.costCenterGuid,
         costCenterName: costCenterData.costCenterName,
