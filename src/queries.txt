@@ -1,0 +1,1 @@
+curl.exe -X POST "http://127.0.0.1:5050/sync/historical/dc" -H "Authorization: Bearer YOUR_AGENT_TOKEN" -H "Content-Type: application/json" --data "{\"fromDate\":\"20230401\",\"toDate\":\"20260713\",\"forceRestart\":true}"
