@@ -146,9 +146,9 @@ function buildCrmPayload(input: {
    * Older version was sending 3-4 duplicate arrays, which made RDP payloads
    * heavy and caused CRM timeouts for real Tally vouchers.
    */
-  if (input.moduleName === "sales-orders") {
-    payload.salesOrders = batch;
-  }
+  // if (input.moduleName === "sales-orders") {
+  //   payload.salesOrders = batch;
+  // }
 
   if (input.moduleName === "purchase-orders") {
     payload.purchaseOrders = batch;
@@ -394,7 +394,10 @@ async function pushRecordsToCrm(
         snapshot_is_full: true,
         snapshot_final_batch: true,
       };
-      const result = await postWithRetry(url, buildCrmPayload({ moduleName, batch: [], meta }));
+      const result = await postWithRetry(
+        url,
+        buildCrmPayload({ moduleName, batch: [], meta }),
+      );
       summary.successBatches = 1;
       summary.totalBatches = 1;
       summary.results.push({ batchNo: 1, records: 0, result });
@@ -434,7 +437,8 @@ async function pushRecordsToCrm(
         snapshot_id: options.snapshotId || null,
         snapshot_started_at: options.snapshotStartedAt || null,
         snapshot_is_full: Boolean(options.isFullSnapshot),
-        snapshot_final_batch: Boolean(options.isFullSnapshot) && batchNo === batches.length,
+        snapshot_final_batch:
+          Boolean(options.isFullSnapshot) && batchNo === batches.length,
       };
 
       const result = await postWithRetry(
