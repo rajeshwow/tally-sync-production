@@ -3,6 +3,9 @@ git config --global user.email "rprajapat@thb.co.in"
 
 
 
-/c ""E:\Rajesh Tally SYNC\Tally-Sync-Prod\tally-sync-production\scripts\start-daily-sync-agent.bat""
+
+
+
+/k call "E:\Rajesh Tally SYNC\Tally-Sync-Prod\tally-sync-production\scripts\start-daily-sync-agent.bat"
 
 E:\Rajesh Tally SYNC\Tally-Sync-Prod\tally-sync-production
