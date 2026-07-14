@@ -1,4 +1,7 @@
-import { fetchTallyCompaniesXml } from "./tally.client";
+import {
+  fetchCurrentTallyCompanyXml,
+  fetchTallyCompaniesXml,
+} from "./tally.client";
 
 export type TallyCompanyForSync = {
   name: string;
@@ -12,6 +15,8 @@ export type TallyCompanyForSync = {
 export type TallyCompanySelection = {
   companyName?: string | null;
   companyGuid?: string | null;
+  /** Internal use: dynamically detected current Tally company may bypass .env allowlist. */
+  skipConfiguredAllowlist?: boolean;
 };
 
 function decodeXml(value: string) {
@@ -85,11 +90,38 @@ export function parseTallyCompanies(xml: string): TallyCompanyForSync[] {
   return Array.from(unique.values());
 }
 
+
 /**
- * Tally HTTP/XML requests browser ya HTML5 Tally session me selected
- * company ko reliably inherit nahi karti.
- *
- * Isliye company ko GUID ya exact name se explicitly select karna zaroori hai.
+ * Resolves the company that is currently active in the Tally UI.
+ * No company name/GUID is read from .env for this lookup.
+ */
+export async function resolveCurrentTallyCompany(): Promise<TallyCompanyForSync> {
+  const currentCompanyXml = await fetchCurrentTallyCompanyXml();
+  const companies = parseTallyCompanies(String(currentCompanyXml || ""));
+
+  if (!companies.length) {
+    throw new Error(
+      "No active Tally company detected. Open/select one company in Tally and retry.",
+    );
+  }
+
+  if (companies.length > 1) {
+    throw new Error(
+      `Multiple active Tally companies were returned: ${companies
+        .map((company) => company.name)
+        .join(" | ")}. Keep/select one current company and retry.`,
+    );
+  }
+
+  console.log("[TALLY] Current opened company auto-detected:", companies[0]);
+
+  return companies[0];
+}
+
+/**
+ * Manual/API-triggered sync ke liye company GUID ya exact name se select hoti hai.
+ * Daily sync is resolver ko directly use nahi karta; wo resolveCurrentTallyCompany()
+ * se active Tally company detect karke explicit GUID/name pass karta hai.
  *
  * Priority:
  * 1. Request body companyGuid

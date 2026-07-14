@@ -42,6 +42,10 @@ type HistoricalTransactionsRequest = {
   toDate?: string;
   /** Optional. If missing, all loaded Tally companies will run. */
   companyName?: string;
+  /** Optional. GUID is preferred when the caller already resolved the current company. */
+  companyGuid?: string;
+  /** Internal use for opened-company daily sync; prevents stale .env allowlist from overriding it. */
+  skipConfiguredAllowlist?: boolean;
   /**
    * Optional module filter.
    * Accepted: sales-vouchers, purchase-vouchers, outstandings
@@ -449,10 +453,14 @@ function parseEnvCompanies(): TallyCompanyForTransactions[] {
     .map((name) => ({ name, guid: null }));
 }
 
-async function getCompaniesForSync(): Promise<TallyCompanyForTransactions[]> {
-  const companies = await resolveConfiguredTallyCompanies();
+async function getCompaniesForSync(selection: {
+  companyName?: string | null;
+  companyGuid?: string | null;
+  skipConfiguredAllowlist?: boolean;
+} = {}): Promise<TallyCompanyForTransactions[]> {
+  const companies = await resolveConfiguredTallyCompanies(selection);
 
-  addEvent("info", "Safe configured Tally companies resolved", {
+  addEvent("info", "Tally companies resolved for sync", {
     companies: companies.map((company) => ({
       name: company.name,
       guid: company.guid || null,
@@ -2225,7 +2233,11 @@ export async function runHistoricalTransactionsSync(
   }
 
   try {
-    const companies = await getCompaniesForSync();
+    const companies = await getCompaniesForSync({
+      companyName: input?.companyName || null,
+      companyGuid: input?.companyGuid || null,
+      skipConfiguredAllowlist: Boolean(input?.skipConfiguredAllowlist),
+    });
 
     const selectedCompanies = input?.companyName
       ? companies.filter(

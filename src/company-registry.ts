@@ -1,10 +1,10 @@
-import { fetchTallyCompaniesXml } from "./tally.client";
 import {
   parseTallyCompanies,
   resolveTallyCompany,
   TallyCompanyForSync,
   TallyCompanySelection,
 } from "./tally-company-selector";
+import { fetchTallyCompaniesXml } from "./tally.client";
 
 type ConfiguredCompanySelector = {
   raw: string;
@@ -20,7 +20,9 @@ function normalizeName(value?: string | null) {
 }
 
 function normalizeGuid(value?: string | null) {
-  return String(value || "").trim().toLowerCase();
+  return String(value || "")
+    .trim()
+    .toLowerCase();
 }
 
 function looksLikeGuid(value?: string | null) {
@@ -121,6 +123,7 @@ export async function resolveConfiguredTallyCompanies(
     });
 
     if (
+      !selection.skipConfiguredAllowlist &&
       configured.length > 0 &&
       !configured.some((selector) => selectorMatchesCompany(selector, selected))
     ) {
@@ -195,6 +198,7 @@ export async function getTallyCompanyDiagnostics() {
     configured,
     available,
     resolved,
-    safe_to_sync: configured.length > 0 && resolved.length === configured.length,
+    safe_to_sync:
+      configured.length > 0 && resolved.length === configured.length,
   };
 }

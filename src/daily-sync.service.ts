@@ -1,5 +1,6 @@
 import { runHistoricalTransactionsSync } from "./historical-transactions.service";
 import { runFullSync } from "./sync.service";
+import { resolveCurrentTallyCompany } from "./tally-company-selector";
 
 function formatTallyDate(date: Date) {
   return `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, "0")}${String(date.getDate()).padStart(2, "0")}`;
@@ -12,9 +13,25 @@ export async function runDailySync() {
   from.setDate(from.getDate() - lookbackDays);
   const range = { fromDate: formatTallyDate(from), toDate: formatTallyDate(to) };
 
-  const masters = await runFullSync();
+  const currentCompany = await resolveCurrentTallyCompany();
+
+  const companySelection = {
+    companyName: currentCompany.name,
+    companyGuid: currentCompany.guid || null,
+    skipConfiguredAllowlist: true,
+  };
+
+  console.log("[DAILY SYNC] Using currently opened Tally company", {
+    companyName: currentCompany.name,
+    companyGuid: currentCompany.guid || null,
+  });
+
+  const masters = await runFullSync(companySelection);
   const transactions = await runHistoricalTransactionsSync({
     ...range,
+    companyName: currentCompany.name,
+    companyGuid: currentCompany.guid || undefined,
+    skipConfiguredAllowlist: true,
     modules: ["sales-vouchers", "purchase-vouchers", "outstandings", "delivery-challans"],
     skipCheckpoints: true,
     syncMode: "incremental",
@@ -28,6 +45,10 @@ export async function runDailySync() {
     status: failed ? "failed" : partial ? "partial_success" : "success",
     syncMode: "incremental",
     range,
+    currentCompany: {
+      name: currentCompany.name,
+      guid: currentCompany.guid || null,
+    },
     masters,
     transactions,
     totals: masters?.totals || {},
