@@ -814,13 +814,19 @@ export function parseStockItems(
           readTag(block, "STOCKCATEGORYNAME"),
       );
 
+      // CRM reports must follow Tally's Stock Category:
+      // ATVI STAND, ATVI CAMERA, ATVI MIC, ATVI IFP, ATVI OPS, etc.
       const crmCategory =
-        rootStockGroupName || stockCategoryName || "Uncategorized";
+        stockCategoryName || rootStockGroupName || "Uncategorized";
 
+      // Preserve the immediate Stock Group as CRM sub-category.
       const crmSubCategory =
         stockGroupName && !sameStockGroupName(stockGroupName, crmCategory)
           ? stockGroupName
-          : null;
+          : rootStockGroupName &&
+              !sameStockGroupName(rootStockGroupName, crmCategory)
+            ? rootStockGroupName
+            : null;
 
       return {
         guid: stripXml(readTag(block, "GUID")),

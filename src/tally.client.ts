@@ -35,7 +35,6 @@ export async function postToTally(xml: string) {
   return xmlText;
 }
 
-
 function readTallyResponseTag(xml: string, tag: string) {
   const escaped = tag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const match = String(xml || "").match(
@@ -67,7 +66,9 @@ function assertValidTallyResponse(xml: string) {
 
   const errors = Number(readTallyResponseTag(text, "ERRORS") || 0);
   if (Number.isFinite(errors) && errors > 0) {
-    throw new Error(`[TALLY CLIENT] Tally response contains ${errors} error(s)`);
+    throw new Error(
+      `[TALLY CLIENT] Tally response contains ${errors} error(s)`,
+    );
   }
 
   const status = readTallyResponseTag(text, "STATUS");
@@ -280,8 +281,7 @@ export async function fetchStockItemsXml(companyName?: string) {
         <TDLMESSAGE>
           <COLLECTION NAME="CRM Stock Items" ISMODIFY="No">
             <TYPE>Stock Item</TYPE>
-            <FETCH>Name,Guid,MasterId,AlterId,Parent,BaseUnits,OpeningBalance,OpeningRate,OpeningValue,ClosingBalance,ClosingRate,ClosingValue,GSTHSNCode,Description,PartNo,Manufacturer,Brand</FETCH>
-          </COLLECTION>
+<FETCH>Name,Guid,MasterId,AlterId,Parent,Category,StockCategory,StockCategoryName,BaseUnits,OpeningBalance,OpeningRate,OpeningValue,ClosingBalance,ClosingRate,ClosingValue,GSTHSNCode,Description,PartNo,Manufacturer,Brand</FETCH>          </COLLECTION>
         </TDLMESSAGE>
       </TDL>
     </DESC>

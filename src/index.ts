@@ -2,7 +2,8 @@ import cors from "cors";
 import "dotenv/config";
 import express, { NextFunction, Request, Response } from "express";
 import cron from "node-cron";
-import { updateTallyConnectionInCrm } from "./crm.client";
+import { getTallyCompanyDiagnostics } from "./company-registry";
+import { runDailySync } from "./daily-sync.service";
 import {
   getHistoricalSyncStatus,
   startHistoricalSyncInBackground,
@@ -11,10 +12,11 @@ import {
   getHistoricalTransactionsSyncStatus,
   startHistoricalTransactionsSyncInBackground,
 } from "./historical-transactions.service";
-import { runFullSync } from "./sync.service";
-import { runDailySync } from "./daily-sync.service";
-import { getTallyCompanyDiagnostics } from "./company-registry";
-import { acquireSingleInstanceLock, releaseSingleInstanceLock } from "./instance-lock";
+import {
+  acquireSingleInstanceLock,
+  releaseSingleInstanceLock,
+} from "./instance-lock";
+import { runFullSync, runStockItemsOnlySync } from "./sync.service";
 
 const app = express();
 
@@ -285,7 +287,12 @@ app.post(
     try {
       console.log(`[MANUAL SYNC] Started at ${lastManualSyncStartedAt}`);
 
-      const result = await runFullSync(companySelection);
+      // const result = await runFullSync(companySelection);
+
+      const result =
+        req.body?.module === "stock-items"
+          ? await runStockItemsOnlySync(companySelection)
+          : await runFullSync(companySelection);
 
       lastManualSyncAt = new Date().toISOString();
       lastManualSyncCompletedAt = lastManualSyncAt;

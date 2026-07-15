@@ -1,3 +1,4 @@
+import { resolveConfiguredTallyCompanies } from "./company-registry";
 import {
   pushCostCentersToCrm,
   pushLedgersToCrm,
@@ -14,7 +15,6 @@ import {
   parseStockItems,
 } from "./mapper";
 import { TallyCompanySelection } from "./tally-company-selector";
-import { resolveConfiguredTallyCompanies } from "./company-registry";
 import {
   fetchAccountGroupsXml,
   fetchCostCentersXml,
@@ -122,7 +122,10 @@ async function syncOneCompany(company: TallyCompanyForSync) {
     const accountGroups = parseAccountGroups(String(accountGroupsXml || ""));
     const ledgerXmlText = String(ledgersXml || "");
     const ledgers = attachCompany(
-      enrichLedgersWithGroupHierarchy(parseLedgers(ledgerXmlText), accountGroups),
+      enrichLedgersWithGroupHierarchy(
+        parseLedgers(ledgerXmlText),
+        accountGroups,
+      ),
       company,
     );
 
@@ -303,6 +306,151 @@ export async function runFullSync(selection: TallyCompanySelection = {}) {
       },
 
       totals,
+      companyResults,
+      failedCompanies,
+    };
+  } finally {
+    isSyncRunning = false;
+  }
+}
+
+export async function runStockItemsOnlySync(
+  selection: TallyCompanySelection = {},
+) {
+  if (isSyncRunning) {
+    return {
+      skipped: true,
+      status: "skipped",
+      message: "Previous sync is still running",
+    };
+  }
+
+  isSyncRunning = true;
+
+  try {
+    const companies = await getCompaniesForSync(selection);
+
+    if (!companies.length) {
+      throw new Error("No Tally company was selected for sync.");
+    }
+
+    const companyResults: any[] = [];
+    const failedCompanies: Array<{
+      company: TallyCompanyForSync;
+      error: string;
+    }> = [];
+
+    for (const company of companies) {
+      const startedAt = new Date().toISOString();
+
+      try {
+        console.log(`[TALLY] Stock-items-only sync started: ${company.name}`);
+
+        await updateTallyConnectionInCrm({
+          companyName: company.name,
+          companyGuid: company.guid,
+        });
+
+        // Stock Group hierarchy is needed to map category/sub-category.
+        const stockGroupsXml = await fetchStockGroupsXml(company.name);
+        const stockGroups = parseStockGroups(String(stockGroupsXml || ""));
+
+        console.log("[TALLY] Stock groups parsed", {
+          company: company.name,
+          count: stockGroups.length,
+        });
+
+        const stockItemsXml = await fetchStockItemsXml(company.name);
+
+        const stockItems = attachCompany(
+          parseStockItems(String(stockItemsXml || ""), stockGroups),
+          company,
+        );
+
+        const stockItemResult = await pushStockItemsToCrm(stockItems, {
+          companyName: company.name,
+          companyGuid: company.guid,
+          syncMode: "incremental",
+          batchSize: getNumberEnv("BATCH_SIZE_STOCK_ITEMS", 20),
+        });
+
+        const completedAt = new Date().toISOString();
+
+        await updateTallySyncStateInCrm({
+          companyName: company.name,
+          companyGuid: company.guid,
+          syncMode: "incremental",
+          startedAt,
+          completedAt,
+          status: "success",
+        });
+
+        companyResults.push({
+          company,
+          ledgers: {
+            count: 0,
+            result: null,
+          },
+          costCenters: {
+            count: 0,
+            result: null,
+          },
+          stockItems: {
+            count: stockItems.length,
+            result: stockItemResult,
+          },
+        });
+
+        console.log(`[TALLY] Stock-items-only sync completed: ${company.name}`);
+      } catch (error: any) {
+        const message = error?.message || "Stock item sync failed";
+
+        failedCompanies.push({
+          company,
+          error: message,
+        });
+
+        await updateTallySyncStateInCrm({
+          companyName: company.name,
+          companyGuid: company.guid,
+          syncMode: "incremental",
+          startedAt,
+          completedAt: new Date().toISOString(),
+          status: "failed",
+          errorMessage: message,
+        });
+
+        console.error("[TALLY] Stock-items-only sync failed", {
+          company: company.name,
+          companyGuid: company.guid,
+          message,
+        });
+      }
+    }
+
+    return {
+      skipped: false,
+      status:
+        companyResults.length === 0
+          ? "failed"
+          : failedCompanies.length
+            ? "partial_success"
+            : "success",
+      syncMode: "incremental",
+      companies: {
+        count: companies.length,
+        successCount: companyResults.length,
+        failedCount: failedCompanies.length,
+        records: companies,
+      },
+      totals: {
+        ledgers: 0,
+        costCenters: 0,
+        stockItems: companyResults.reduce(
+          (total, item) => total + item.stockItems.count,
+          0,
+        ),
+      },
       companyResults,
       failedCompanies,
     };

@@ -1,3 +1,12 @@
+
+
+----------------ONLY STOCK ITEM-------------------
+
+curl.exe -X POST "http://127.0.0.1:5050/sync/run" -H "Authorization: Bearer a8f4b8e2c3d9f1a09b7c6d5e4f1234567890abcdef1234567890abcdef12" -H "Content-Type: application/json" --data "{\"module\":\"stock-items\"}"
+
+--------------------------------------------------------
+
+
 curl.exe -X POST "http://127.0.0.1:5050/sync/run" -H "Authorization: Bearer a8f4b8e2c3d9f1a09b7c6d5e4f1234567890abcdef1234567890abcdef12" -H "Content-Type: application/json" --data "{\"companyName\":\"ATVI Computech Private Limited - (from 1-Apr-23)\",\"reason\":\"manual_masters_sync\"}"
 
 --------------- 
